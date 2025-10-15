@@ -1,0 +1,12 @@
+# Showcase this worker on https://openrelik.org/marketplace
+publish: true
+
+# Worker Metadata. This section is required.
+display_name: EvtxECmd Worker
+description: Runs EZTools EvtxECmd against evtx files
+
+# Optional: Third-Party Tools Used by the Worker.
+tools:
+  - display_name: EvtxECmd
+    description: Event log (evtx) parser with standardized CSV, XML, and json output! Custom maps, locked file support, and more!
+    url: https://github.com/EricZimmerman/evtx # URL for more info about the tool
