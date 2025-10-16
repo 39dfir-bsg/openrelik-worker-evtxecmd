@@ -2,8 +2,18 @@
 ## Description
 This worker runs eric zimmerman's evtxecmd application against evtx files.
 
+Supports `.openrelik-hostname` files.
+
+Supply a `.openrelik-hostname` file to this worker and it will prefix any output with the included hostname. If you're running an extract from an archive task before this, place your `.openrelik-hostname` file in an archive (eg. `openrelik-config.zip`) and add globs for it (`*.openrelik-hostname`) to your extract from archive task.
+
+You might want to use the following glob when extracting from a zip archive before this.
+
+`*.evtx`
+
 ## Deploy
-Add the below configuration to the OpenRelik docker-compose.yml file.
+Update your `config.env` file to set `OPENRELIK_WORKER_EVTXECMD_VERSION` to the tagged release version you want to use.
+
+Add the below configuration to the OpenRelik docker-compose.yml file, you may need to update the `image:` value to point to the container in a  registry.
 
 ```
 openrelik-worker-evtxecmd:

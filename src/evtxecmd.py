@@ -10,6 +10,8 @@ from celery.utils.log import get_task_logger
 from openrelik_worker_common.file_utils import create_output_file
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
 
+from pathvalidate import sanitize_filename
+
 from .app import celery
 
 # Task name used to register and route the task to the correct queue.
@@ -23,8 +25,11 @@ TASK_METADATA = {
 
 COMPATIBLE_INPUTS = {
     "data_types": [],
-    "mime_types": ["application/x-ms-evtx"],
-    "filenames": ["*.evtx"],
+    "mime_types": ["application/x-ms-evtx", "text/plain"],
+    "filenames": [
+        "*.evtx",
+        ".openrelik-hostname"
+        ],
 }
 
 @celery.task(bind=True, name=TASK_NAME, metadata=TASK_METADATA)
@@ -45,9 +50,17 @@ def evtxecmd(
             command="",
         )
 
+    # .openrelik-hostname support
+    prefix = ""
+    if (hostname_item := next((f for f in input_files if f.get('display_name') == ".openrelik-hostname"), None)):
+        with open(hostname_item.get('path'),"r", encoding="utf-8") as f:
+            raw_hostname = f.read().strip()
+        prefix = f"{sanitize_filename(raw_hostname)}_"
+
+
     output_file = create_output_file(
         output_path,
-        display_name="EvtxECmd_output.csv",
+        display_name=f"{prefix}EvtxECmd_output.csv",
         data_type="openrelik:evtxecmd:evtxecmd",
     )
 
