@@ -7,9 +7,11 @@ from uuid import uuid4
 from celery import signals
 from celery.utils.log import get_task_logger
 
+from openrelik_common.logging import Logger
 from openrelik_worker_common.file_utils import create_output_file
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
 
+import yaml
 from pathvalidate import sanitize_filename
 
 from .app import celery
@@ -28,9 +30,21 @@ COMPATIBLE_INPUTS = {
     "mime_types": ["application/x-ms-evtx", "text/plain"],
     "filenames": [
         "*.evtx",
-        ".openrelik-hostname"
+        ".openrelik-config"
         ],
 }
+
+log_root = Logger()
+logger = log_root.get_logger(__name__, get_task_logger(__name__))
+
+
+@signals.task_prerun.connect
+def on_task_prerun(sender, task_id, task, args, kwargs, **_):
+    log_root.bind(
+        task_id=task_id,
+        task_name=task.name,
+        worker_name=TASK_METADATA.get("display_name"),
+    )
 
 @celery.task(bind=True, name=TASK_NAME, metadata=TASK_METADATA)
 def evtxecmd(
@@ -50,14 +64,38 @@ def evtxecmd(
             command="",
         )
 
-    # .openrelik-hostname support
+    # .openrelik-config 'hostname' key support
     prefix = ""
-    if (hostname_item := next((f for f in input_files if f.get('display_name') == ".openrelik-hostname"), None)):
-        with open(hostname_item.get('path'),"r", encoding="utf-8") as f:
-            raw_hostname = f.read().strip()
-        prefix = f"{sanitize_filename(raw_hostname)}_"
+    config_item = next((f for f in input_files if f.get('display_name') == ".openrelik-config"), None)
+    if config_item:
+        try:
+            with open(config_item.get('path'), "r", encoding="utf-8") as f:
+                config_data = yaml.safe_load(f)
 
+            if isinstance(config_data, dict) and "hostname" in config_data:
+                raw_hostname = str(config_data["hostname"]).strip()
+                prefix = f"{sanitize_filename(raw_hostname)}_"
+            else:
+                logger.info("No 'hostname' key found in .openrelik-config file.")
 
+        except yaml.YAMLError:
+            logger.error(".openrelik-config is not a valid YAML file.")
+        except Exception as e:
+            logger.error(f"Error reading .openrelik-config: {e}")
+
+        # Pass through .openrelik-config as an output
+        # need to move/rename .openrelik-config to the uuid and extension?
+        config_passthrough_file = create_output_file(
+            output_path,
+            display_name=config_item.get('display_name'),
+            data_type="openrelik:openrelik-config:openrelik-config",
+        )
+        # link file to location of new output_file
+        os.link(config_item.get("path"), config_passthrough_file.path)
+        # output our file
+        output_files.append(config_passthrough_file.to_dict())
+
+    # Prep for output file
     output_file = create_output_file(
         output_path,
         display_name=f"{prefix}EvtxECmd_output.csv",
