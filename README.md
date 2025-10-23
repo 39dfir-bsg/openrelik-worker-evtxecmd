@@ -2,9 +2,9 @@
 ## Description
 This worker runs eric zimmerman's evtxecmd application against evtx files.
 
-Supports `.openrelik-hostname` files.
+Supports an `.openrelik-config` file.
 
-Supply a `.openrelik-hostname` file to this worker and it will prefix any output with the included hostname. If you're running an extract from an archive task before this, place your `.openrelik-hostname` file in an archive (eg. `openrelik-config.zip`) and add globs for it (`*.openrelik-hostname`) to your extract from archive task.
+Supply an `.openrelik-config` file to this worker with an `openrelik-hostname:` argument and it will prefix any output with the included hostname. It will also perform passthrough of the `.openrelik-config` file so it can be used in any follow on worker tasks. If you're running an extract from an archive task before this, place your `.openrelik-config` file in an archive (eg. `openrelik-config.zip`) and add globs for it (`*.openrelik-config`) to your extract from archive task.
 
 You might want to use the following glob when extracting from a zip archive before this.
 
